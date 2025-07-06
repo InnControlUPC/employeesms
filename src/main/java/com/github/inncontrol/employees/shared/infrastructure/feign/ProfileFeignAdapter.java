@@ -14,7 +14,8 @@ public class ProfileFeignAdapter {
     }
 
     public ProfileId createProfile(CreateProfileRequest request) {
-        return profileFeignClient.createProfile(request);
+        ProfileResource profileResource = profileFeignClient.createProfile(request);
+        return new ProfileId(profileResource.id());
     }
 
     public ProfileId getProfileByEmail(String email) {

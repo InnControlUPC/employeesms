@@ -18,6 +18,7 @@ public class ExternalProfileService {
     public Optional<ProfileId> fetchProfileIdByEmail(String email) {
         try {
             ProfileId profileId = profileFeignClientAdapter.getProfileByEmail(email);
+            System.out.println("Profile fetched: " + profileId);
             return Optional.ofNullable(profileId);
         } catch (Exception e) {
             System.err.println("Error fetching profile by email: " + e.getMessage());

@@ -1,6 +1,7 @@
 package com.github.inncontrol.employees.interfaces.rest;
 
 import com.github.inncontrol.employees.domain.model.queries.GetEmployeeByIdQuery;
+import com.github.inncontrol.employees.domain.model.queries.GetEmployeeByProfileIdQuery;
 import com.github.inncontrol.employees.domain.services.EmployeeCommandService;
 
 import com.github.inncontrol.employees.domain.services.EmployeeQueryService;
@@ -10,11 +11,14 @@ import com.github.inncontrol.employees.interfaces.rest.resources.UpdateEmployeeR
 import com.github.inncontrol.employees.interfaces.rest.transform.CreateEmployeeCommandFromResourceAssembler;
 import com.github.inncontrol.employees.interfaces.rest.transform.EmployeeResourceFromEntityAssember;
 import com.github.inncontrol.employees.interfaces.rest.transform.UpdateCommandFromResourceAssembler;
+import com.github.inncontrol.employees.shared.application.internal.outboundedservices.acl.ExternalProfileService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping(value = "/api/v1/employees", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -23,11 +27,13 @@ public class EmployeeController {
 
     private final EmployeeCommandService employeeCommandService;
     private final EmployeeQueryService employeeQueryService;
+    private final ExternalProfileService profilesContextFacade;
 
 
-    public EmployeeController(EmployeeCommandService employeeCommandService, EmployeeQueryService employeeQueryService) {
+    public EmployeeController(EmployeeCommandService employeeCommandService, EmployeeQueryService employeeQueryService, ExternalProfileService profilesContextFacade) {
         this.employeeCommandService = employeeCommandService;
         this.employeeQueryService = employeeQueryService;
+        this.profilesContextFacade = profilesContextFacade;
     }
 
     @PostMapping
@@ -50,6 +56,22 @@ public class EmployeeController {
         return new ResponseEntity<>(employeeResource, HttpStatus.CREATED);
     }
 
+    @GetMapping
+    public ResponseEntity<EmployeeResource> getEmployeeByQuery(@RequestParam Map<String, String> queries) {
+        if (queries.containsKey("email")) {
+            var profileId = profilesContextFacade.fetchProfileIdByEmail(queries.get("email"));
+            System.out.println("Profile ID fetched from controller: " + profileId);
+            if (profileId.get().profileId() == 0) return ResponseEntity.notFound().build();
+            var getEmployeeById = new GetEmployeeByProfileIdQuery(profileId.get().profileId() );
+            var employee = employeeQueryService.handle(getEmployeeById);
+            System.out.println("Employee fetched from controller: " + employee);
+            var employeeResource = EmployeeResourceFromEntityAssember.toResourceFromEntity(employee.orElseThrow());
+            return ResponseEntity.ok(employeeResource);
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/{employeeId}")
     public ResponseEntity<EmployeeResource> getEmployee(@PathVariable Long employeeId) {
         var getEmployeeById = new GetEmployeeByIdQuery(employeeId);
@@ -58,20 +80,7 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeResource);
     }
 
-//    @GetMapping
-//    public ResponseEntity<EmployeeResource> getEmployeeByQuery(@RequestParam Map<String, String> queries) {
-//        if (queries.containsKey("email")) {
-//            System.out.println(queries.get("email"));
-//            var profileId = profilesContextFacade.fetchProfileIdByEmail(queries.get("email"));
-//            if (profileId == 0) return ResponseEntity.notFound().build();
-//            var getEmployeeById = new GetEmployeeByProfileIdQuery(profileId);
-//            var employee = employeeQueryService.handle(getEmployeeById);
-//            var employeeResource = EmployeeResourceFromEntityAssember.toResourceFromEntity(employee.orElseThrow());
-//            return ResponseEntity.ok(employeeResource);
-//        } else {
-//            return ResponseEntity.badRequest().build();
-//        }
-//    }
+
 
     @PutMapping("/{employeeId}")
     public ResponseEntity<EmployeeResource> updateEmployee(@PathVariable Long employeeId, @RequestBody UpdateEmployeeResource resource) {

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 public interface ProfileFeignClient {
     @PostMapping("/api/v1/profiles")
     @ResponseStatus(HttpStatus.CREATED)
-    ProfileId createProfile(@RequestBody CreateProfileRequest request);
+    ProfileResource createProfile(@RequestBody CreateProfileRequest request);
 
     @GetMapping("/api/v1/profiles/by-email")
     ProfileResource getProfileByEmail(@RequestParam String email);
